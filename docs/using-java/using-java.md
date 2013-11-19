@@ -23,14 +23,14 @@ Understanding the separation between the __Android UI thread__ and __Stella thre
 
 Conceptually the communication can be both ways. Suppose the native side initiates an action, the sequence of events are described as follows:
 
-| Stella thread                    | Android UI thread
-| -                                | -
-| native: initiate call to Java    |
-| Java: run command on UI thread   |
-|                                  | Java: command run on UI thread
-|                                  | Java: native callback
-|                                  | native: forward callback to stella thread
-| native: action performed         |
+| Stella thread                         | Android UI thread
+| -                                     | -
+| native: initiate call to Java         |
+| Java: command run in Stella thread    |
+|                                       | Java: command run in Android UI thread
+|                                       | Java: native callback
+|                                       | native: forward callback to stella thread
+| native: action performed              |
 
 
 #### Using JNIHelper
@@ -140,6 +140,72 @@ On the Java side, set paypoint info and just launch `doBilling ()` with a callba
 
 
 
+### BackKeyEvent at a glance
+
+The window object sends the BackKey event to the first responder for handling. If the first responder cannot handle an event, it forwards the event to the next responder in the responder chain.
+
+
+#### Using BackKeyEvent
+
+The guide below demonstrates how to handle the BackKeyEvent in your application.
+Press the device back button,the KeyDown:(UIEvent *)event method on the responders in the UIResponder chain is invoked. Implement the method manually.
+
+	<!--AppDelegate.m-->
+	 - (void) KeyDown: (UIEvent *) event
+    {
+        #if defined (__STELLA_VERSION_MAX_ALLOWED) && defined (__ANDROID__)
+            _backKeyLabel.text      = @"BackKey Down!!!";
+        #endif
+    }
+
+	- (BOOL) canBecomeFirstResponder
+	{
+			return YES;
+	}
+
+
+If not implemented the keyDown: (UIEvent *)event method on the Objective_C native code. StellaSDK send back the backButtonPressed event to Java. Handle the backButtonPressed () on the MainActivity:
+	
+	<!--MainHActivity.java-->
+    public void backButtonPressed ()
+    {
+            new AlertDialog.Builder (MainHActivity.this)
+                    .setTitle ("StellaSDK Features Demo")
+                    .setMessage ("Exit the Demo?")
+                    .setCancelable (false)
+                    .setPositiveButton ("YES", new DialogInterface.OnClickListener () {
+                            public void onClick (DialogInterface dialog, int id) {
+                                    MainHActivity.this.finish ();
+                            }
+                    })
+                    .setNegativeButton ("NO", new DialogInterface.OnClickListener () {
+                            public void onClick (DialogInterface dialog, int id) {
+                                    dialog.cancel ();
+                            }
+                    }).show ();
+    }
+
+
+
+
+### Add android widget view
+StellaSDK allows you to easily add a android view (like google Adview) to the app. The following code will add a blue bannber view to the app, manually implement it in the onCreate();
+
+		RelativeLayout  _mainView       = mainView;
+		TextView        _bannerView;
+		bannerView                      = new TextView (this);
+		DisplayMetrics metrics          = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(metrics);
+		_mainView.addView (bannerView, new LayoutParams (metrics.widthPixels, metrics.heightPixels/12));
+		_bannerView.setBackgroundColor (Color.parseColor("#33B5E5"));
+		_bannerView.setText("Hello StellaSDK2");
+
+
+
+
+
+
+
 
 
 ### Complete sample
@@ -170,5 +236,6 @@ Revision    | Notes
 -           | -
 20120911    | Initial revision
 20130822    | Changes for Stella SDK II
+20130913    | Minor fixes and adding BillingSDK
 
 
